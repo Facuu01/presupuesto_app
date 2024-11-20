@@ -529,6 +529,8 @@ with ui.card().classes('max-w-3xl mx-auto p-4 m-4'):
         total_with_vat_label = ui.label('').classes('text-lg font-bold')
 
 # Inicializar la base de datos al inicio de la aplicación
+app = ui.app
+
 if __name__ == '__main__':
     init_database()
     port = int(os.environ.get('PORT', 8080))

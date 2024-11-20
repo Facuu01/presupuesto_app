@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: presupuesto-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn presupuesto_app:app -w 4 -k uvicorn.workers.UvicornWorker
+    envVars:
+      - key: PGDATABASE
+        sync: false
+      - key: PGUSER
+        sync: false
+      - key: PGPASSWORD
+        sync: false
+      - key: PGHOST
+        sync: false
+      - key: PGPORT
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.9.0

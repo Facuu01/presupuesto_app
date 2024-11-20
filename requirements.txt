@@ -1,3 +1,5 @@
 nicegui
 gunicorn
+uvicorn
+psycopg2-binary
 reportlab
