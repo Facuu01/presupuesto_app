@@ -25,10 +25,10 @@ LOGO_HEIGHT = 100
 
 # Configuración de la base de datos PostgreSQL
 DB_CONFIG = {
-    'dbname': 'tu_base_de_datos',
-    'user': 'tu_usuario',
-    'password': 'tu_contraseña',
-    'host': 'tu_host',
+    'dbname': 'presupuesto_db',
+    'user': 'presupuesto_db_user',
+    'password': 'eigRQ0n91eXV46PdDNiJ3VyA0ESGWzAK',
+    'host': 'dpg-csulfndds78s738naf3g-a',
     'port': '5432'
 }
 
@@ -533,5 +533,5 @@ app = ui.run()
 
 if __name__ == '__main__':
     init_database()
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 4000))
     ui.run(port=port, host='0.0.0.0')
