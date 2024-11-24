@@ -528,9 +528,17 @@ with ui.card().classes('max-w-3xl mx-auto p-4 m-4'):
         total_label = ui.label('Total sin IVA: $0.00').classes('text-lg')
         total_with_vat_label = ui.label('').classes('text-lg font-bold')
 
-# Inicializar la base de datos al inicio de la aplicación
-if __name__ in {"__main__", "__mp_main__"}:
-    init_database()  # Inicializa la base de datos antes de arrancar el servidor
-    port = int(os.environ.get('PORT', 8080))  # Define el puerto
-    ui.run(port=port, host='0.0.0.0')  # Inicia el servidor
+# Inicializar la base de datos al inicio
+init_database()
 
+# Crear la aplicación
+app = ui.run(
+    port=int(os.environ.get('PORT', 8080)),
+    host='0.0.0.0',
+    reload=False,  # Deshabilitar el reload automático en producción
+    show=False    # No abrir automáticamente el navegador
+)
+
+# Solo ejecutar el servidor si este archivo es el principal
+if __name__ in {"__main__", "__mp_main__"}:
+    app.run()
