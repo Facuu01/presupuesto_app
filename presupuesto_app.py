@@ -50,7 +50,7 @@ def init_database():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS materiales (
                     cod VARCHAR(50) PRIMARY KEY,
-                    descripcion TEXT NOT NULL,
+                    descripcion TEXT NOT NULL
                 )
             """)
         conn.commit()
