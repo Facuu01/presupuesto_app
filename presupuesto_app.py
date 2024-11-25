@@ -23,37 +23,44 @@ productos = []
 LOGO_WIDTH = 250
 LOGO_HEIGHT = 100
 
-# Configuración de la base de datos PostgreSQL
-DB_CONFIG = {
-    'dbname': 'presupuesto_db',
-    'user': 'presupuesto_db_user',
-    'password': 'eigRQ0n91eXV46PdDNiJ3VyA0ESGWzAK',
-    'host': 'dpg-csulfndds78s738naf3g-a',
-    'port': '5432'
-}
+# URL directa de la base de datos de Render
+DATABASE_URL = "postgresql://presupuesto_db_user:eigRQ0n91eXV46PdDNiJ3VyA0ESGWzAK@dpg-csulfndds78s738naf3g-a.oregon-postgres.render.com/presupuesto_db"
 
 @contextmanager
 def get_db_connection():
     """Administrador de contexto para conexiones a la base de datos"""
     conn = None
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
+        conn = psycopg2.connect(DATABASE_URL)
         yield conn
     finally:
         if conn is not None:
             conn.close()
+
 def init_database():
-    """Inicializa la base de datos con la tabla necesaria"""
+    """Inicializa la base de datos con la tabla necesaria y los datos específicos"""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            # Crear tabla si no existe
+            # Crear tabla si no existe (solo cod y descripcion)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS materiales (
                     cod VARCHAR(50) PRIMARY KEY,
                     descripcion TEXT NOT NULL
                 )
             """)
-        conn.commit()
+            
+            # Insertar los datos específicos
+            try:
+                cur.execute("""
+                    INSERT INTO materiales (cod, descripcion) VALUES
+                    ('001', 'Color a elección'),
+                    ('002', 'Instalación y Flete incluido')
+                    ON CONFLICT (cod) DO UPDATE 
+                    SET descripcion = EXCLUDED.descripcion
+                """)
+                conn.commit()
+            except Exception as e:
+                print(f"Error al insertar datos: {e}")
 
 def cargar_productos():
     """Carga los productos desde la base de datos"""
