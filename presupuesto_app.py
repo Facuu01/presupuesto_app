@@ -8,72 +8,24 @@ from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor, Color
 from datetime import datetime
 import os
-import sqlite3
-import psycopg2
-from psycopg2.extras import DictCursor
-from contextlib import contextmanager
+import io
 
 # Lista para almacenar los ítems de presupuesto
 items = []
-# Variable global para llevar el contador de presupuestos
-PRESUPUESTO_COUNTER = 0
 # Variable global para almacenar los productos de la base de datos
 productos = []
 # Definimos las dimensiones del logo como constantes al inicio del archivo
 LOGO_WIDTH = 250
 LOGO_HEIGHT = 100
 
-# URL directa de la base de datos de Render
-DATABASE_URL = "postgresql://presupuesto_db_user:eigRQ0n91eXV46PdDNiJ3VyA0ESGWzAK@dpg-csulfndds78s738naf3g-a.oregon-postgres.render.com/presupuesto_db"
-
-@contextmanager
-def get_db_connection():
-    """Administrador de contexto para conexiones a la base de datos"""
-    conn = None
-    try:
-        conn = psycopg2.connect(DATABASE_URL)
-        yield conn
-    finally:
-        if conn is not None:
-            conn.close()
-
-def init_database():
-    """Inicializa la base de datos con la tabla necesaria y los datos específicos"""
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            # Crear tabla si no existe (solo cod y descripcion)
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS materiales (
-                    cod VARCHAR(50) PRIMARY KEY,
-                    descripcion TEXT NOT NULL
-                )
-            """)
-            
-            # Insertar los datos específicos
-            try:
-                cur.execute("""
-                    INSERT INTO materiales (cod, descripcion) VALUES
-                    ('001', 'Color a elección'),
-                    ('002', 'Instalación y Flete incluido')
-                    ON CONFLICT (cod) DO UPDATE 
-                    SET descripcion = EXCLUDED.descripcion
-                """)
-                conn.commit()
-            except Exception as e:
-                print(f"Error al insertar datos: {e}")
-
 def cargar_productos():
-    """Carga los productos desde la base de datos"""
+    """Carga los productos predefinidos"""
     global productos
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=DictCursor) as cur:
-                cur.execute('SELECT cod, descripcion FROM materiales')
-                productos = [dict(row) for row in cur.fetchall()]
-        return True
-    except Exception as e:
-        ui.notify(f'Error al cargar productos: {str(e)}', color='negative')
-        return False
+    productos = [
+        {'cod': '001', 'descripcion': 'Color a elección'},
+        {'cod': '002', 'descripcion': 'Instalación y Flete incluido'}
+    ]
+    return True
 
 def actualizar_descripcion(e):
     """Actualiza el precio cuando se selecciona un producto"""
@@ -107,23 +59,17 @@ def generate_pdf():
     if not name_input.value:
         ui.notify('Ingrese el nombre del cliente', color='warning')
         return
-
-    # Incrementar el contador de presupuestos
-    global PRESUPUESTO_COUNTER
-    PRESUPUESTO_COUNTER += 1
-
-    # Crear nombre del archivo con fecha y hora
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    # Crear directorio 'presupuestos' si no existe
-    if not os.path.exists('presupuestos'):
-        os.makedirs('presupuestos')
+    if not budget_number_input.value:
+        ui.notify('Ingrese el número de presupuesto', color='warning')
+        return
     
-    filename = os.path.join('presupuestos', f"presupuesto_{timestamp}.pdf")
+    # Crear un buffer de bytes en memoria para guardar el PDF
+    pdf_buffer = io.BytesIO()
     
     # Crear el documento PDF
     doc = SimpleDocTemplate(
-        filename,
+        pdf_buffer,
         pagesize=letter,
         rightMargin=50,
         leftMargin=50,
@@ -241,7 +187,7 @@ def generate_pdf():
                 ], colWidths=[3*inch]),
                 # Columna derecha con número y fecha
                 Table([
-                    [Paragraph(f"<b>Presupuesto N°:</b> {PRESUPUESTO_COUNTER:04d}", number_style)],
+                    [Paragraph(f"<b>Presupuesto N°:</b> {budget_number_input.value}", number_style)],
                     [Paragraph(f"<b>Fecha:</b> {datetime.now().strftime('%d/%m/%Y')}", date_style)]
                 ], colWidths=[2*inch])
             ]
@@ -263,7 +209,7 @@ def generate_pdf():
                 ], colWidths=[3*inch]),
                 # Columna derecha con número y fecha
                 Table([
-                    [Paragraph(f"Presupuesto N°: {PRESUPUESTO_COUNTER:04d}", number_style)],
+                    [Paragraph(f"Presupuesto N°: {budget_number_input.value}", number_style)],
                     [Paragraph(f"Fecha: {datetime.now().strftime('%d/%m/%Y')}", date_style)]
                 ], colWidths=[3*inch])
             ]
@@ -367,13 +313,23 @@ def generate_pdf():
     
     # Generar PDF
     doc.build(elements, onFirstPage=custom_bg, onLaterPages=custom_bg)
-    
+
+    # Obtener los bytes del PDF
+    pdf_buffer.seek(0)
+    pdf_bytes = pdf_buffer.getvalue()
+
+    # Nombre de archivo para la descarga
+    filename = f"presupuesto_{budget_number_input.value}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+    # Usar ui.download para descargar directamente
+    ui.download(pdf_bytes, filename)
+
     # Notificar al usuario
-    ui.notify(f'PDF generado como "presupuestos/presupuesto_{timestamp}.pdf"', 
+    ui.notify(f'Presupuesto {filename} generado', 
               color='positive', 
               position='center', 
               close_button=True, 
-              timeout=5000)
+              timeout=3000)
 
 # Agregado de items usando base de datos
 def add_item():
@@ -479,6 +435,7 @@ with ui.card().classes('max-w-3xl mx-auto p-4 m-4'):
         with ui.column().classes('flex-1'):
             name_input = ui.input('Nombre del cliente').classes('w-full')
         with ui.column().classes('flex-1'):
+            budget_number_input = ui.input('Número de Presupuesto').classes('w-full')
             vat_checkbox = ui.checkbox('Incluir IVA (21%)', on_change=on_vat_change)
     
     # Botón para limpiar datos del usuario
@@ -493,8 +450,8 @@ with ui.card().classes('max-w-3xl mx-auto p-4 m-4'):
         # Uso de select para la descripción
         description_input = ui.select(
             label='Producto', 
-            options=[p['descripcion'] for p in productos],
-            new_value_mode='add-unique'  # Allows adding new values
+            options=['Color a elección', 'Instalación y Flete incluido'],
+            new_value_mode='add-unique'  # Permite añadir nuevos valores
         ).classes('flex-1')
 
         quantity_input = ui.number('Cantidad', min=0, format='%.2f').classes('w-32')
@@ -534,9 +491,6 @@ with ui.card().classes('max-w-3xl mx-auto p-4 m-4'):
     with ui.row().classes('w-full mt-4 justify-end gap-4'):
         total_label = ui.label('Total sin IVA: $0.00').classes('text-lg')
         total_with_vat_label = ui.label('').classes('text-lg font-bold')
-
-# Inicializar la base de datos al inicio
-init_database()
 
 # Crear la aplicación
 app = ui.run(

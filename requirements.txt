@@ -3,3 +3,4 @@ gunicorn
 uvicorn
 psycopg2-binary
 reportlab
+io
